@@ -154,41 +154,30 @@ export async function fetchInvoicesPages(query: string) {
   }
 }
 
-export async function fetchInvoiceById(id: string): Promise<{
-  amount: number;
-  id: string;
-  customer_id: string;
-  status: "paid" | "pending";
-}> {
-noStore();
+export async function fetchInvoiceById(id: string) {
+  noStore();
+  try {
+    const data = await sql<InvoiceForm>`
+      SELECT
+        invoices.id,
+        invoices.customer_id,
+        invoices.amount,
+        invoices.status
+      FROM invoices
+      WHERE invoices.id = ${id};
+    `;
 
-try {
-  const data = await sql<InvoiceForm>`
-    SELECT
-      invoices.id,
-      invoices.customer_id,
-      invoices.amount,
-      invoices.status
-    FROM invoices
-    WHERE invoices.id = ${id};
-  `;
+    const invoice = data.rows.map((invoice) => ({
+      ...invoice,
+      // Convert amount from cents to dollars
+      amount: invoice.amount / 100,
+    }));
 
-  const invoice = data.rows.map((invoice) => ({
-    ...invoice,
-    // Convert amount from cents to dollars
-    amount: invoice.amount / 100,
-  }))[0];
-
-  // Check if invoice is not undefined before returning
-  if (invoice) {
-    return invoice;
-  } else {
-    throw new Error('Invoice not found');
+    return invoice[0];
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch invoice.');
   }
-} catch (error) {
-  console.error('Database Error:', error);
-  throw new Error('Failed to fetch invoice by id.');
-}
 }
 
 export async function fetchCustomers() {
